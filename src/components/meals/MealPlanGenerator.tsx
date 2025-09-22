@@ -9,6 +9,7 @@ import { FamilyMember, PantryItem, MealPlan } from '@/types';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/components/auth/AuthProvider';
 import { generateMealRecommendations } from '@/lib/nebius';
+import { RecipeModal } from './RecipeModal';
 import { ChefHat, Calendar, ShoppingCart, Bug } from 'lucide-react';
 
 export function MealPlanGenerator() {
@@ -21,6 +22,8 @@ export function MealPlanGenerator() {
   const [mealPlan, setMealPlan] = useState<any>(null);
   const [availableModels, setAvailableModels] = useState<any[]>([]);
   const [debugMode, setDebugMode] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -99,6 +102,13 @@ export function MealPlanGenerator() {
     }
   };
 
+  const handleRecipeClick = (recipe: any) => {
+    if (recipe && recipe.name) {
+      setSelectedRecipe(recipe);
+      setIsRecipeModalOpen(true);
+    }
+  };
+
   const handleGenerateMealPlan = async () => {
     if (!user || familyMembers.length === 0) {
       alert('Please add family members first');
@@ -151,7 +161,50 @@ export function MealPlanGenerator() {
         nutritionPlan,
       });
 
-      const recommendations = JSON.parse(recommendationsResponse);
+      console.log('Raw response:', recommendationsResponse);
+
+      let recommendations;
+      try {
+        // Try to parse the JSON
+        recommendations = JSON.parse(recommendationsResponse);
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.log('Response that failed to parse:', recommendationsResponse);
+        
+        // Try to fix common JSON issues
+        let fixedResponse = recommendationsResponse;
+        
+        // Remove any text before the first {
+        const firstBrace = fixedResponse.indexOf('{');
+        if (firstBrace > 0) {
+          fixedResponse = fixedResponse.substring(firstBrace);
+        }
+        
+        // Remove any text after the last }
+        const lastBrace = fixedResponse.lastIndexOf('}');
+        if (lastBrace > 0) {
+          fixedResponse = fixedResponse.substring(0, lastBrace + 1);
+        }
+        
+        // Try to fix common issues
+        fixedResponse = fixedResponse
+          .replace(/'/g, '"') // Replace single quotes with double quotes
+          .replace(/,\s*}/g, '}') // Remove trailing commas before }
+          .replace(/,\s*]/g, ']') // Remove trailing commas before ]
+          .replace(/\n/g, ' ') // Replace newlines with spaces
+          .replace(/\r/g, ' ') // Replace carriage returns with spaces
+          .replace(/\t/g, ' ') // Replace tabs with spaces
+          .replace(/  +/g, ' '); // Replace multiple spaces with single space
+        
+        try {
+          recommendations = JSON.parse(fixedResponse);
+          console.log('Successfully parsed fixed JSON');
+        } catch (secondParseError) {
+          console.error('Still failed to parse after fixes:', secondParseError);
+          throw new Error('Failed to parse AI response as JSON. The AI returned malformed data.');
+        }
+      }
+
       setMealPlan(recommendations);
 
       // Save meal plan to Firebase
@@ -170,7 +223,11 @@ export function MealPlanGenerator() {
 
     } catch (error) {
       console.error('Error generating meal plan:', error);
-      alert('Failed to generate meal plan. Please try again.');
+      if (error instanceof Error) {
+        alert(`Failed to generate meal plan: ${error.message}`);
+      } else {
+        alert('Failed to generate meal plan. Please try again.');
+      }
     }
     setLoading(false);
   };
@@ -288,6 +345,7 @@ export function MealPlanGenerator() {
               <CardTitle className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
                 Weekly Meal Plan
+                <span className="text-sm font-normal text-gray-500 ml-2">(Click meal names for recipes)</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -298,22 +356,48 @@ export function MealPlanGenerator() {
                     <div className="space-y-1 text-sm">
                       <div>
                         <span className="font-medium">Breakfast:</span>
-                        <p className="text-gray-600">{meals.breakfast?.name || 'Not planned'}</p>
+                        <button
+                          onClick={() => handleRecipeClick(meals.breakfast)}
+                          className="block text-gray-600 hover:text-blue-600 hover:underline cursor-pointer text-left disabled:cursor-default disabled:hover:text-gray-600 disabled:hover:no-underline"
+                          disabled={!meals.breakfast?.name}
+                        >
+                          {meals.breakfast?.name || 'Not planned'}
+                        </button>
                       </div>
                       <div>
                         <span className="font-medium">Lunch:</span>
-                        <p className="text-gray-600">{meals.lunch?.name || 'Not planned'}</p>
+                        <button
+                          onClick={() => handleRecipeClick(meals.lunch)}
+                          className="block text-gray-600 hover:text-blue-600 hover:underline cursor-pointer text-left disabled:cursor-default disabled:hover:text-gray-600 disabled:hover:no-underline"
+                          disabled={!meals.lunch?.name}
+                        >
+                          {meals.lunch?.name || 'Not planned'}
+                        </button>
                       </div>
                       <div>
                         <span className="font-medium">Dinner:</span>
-                        <p className="text-gray-600">{meals.dinner?.name || 'Not planned'}</p>
+                        <button
+                          onClick={() => handleRecipeClick(meals.dinner)}
+                          className="block text-gray-600 hover:text-blue-600 hover:underline cursor-pointer text-left disabled:cursor-default disabled:hover:text-gray-600 disabled:hover:no-underline"
+                          disabled={!meals.dinner?.name}
+                        >
+                          {meals.dinner?.name || 'Not planned'}
+                        </button>
                       </div>
                       {meals.snacks && meals.snacks.length > 0 && (
                         <div>
                           <span className="font-medium">Snacks:</span>
-                          {meals.snacks.map((snack: any, idx: number) => (
-                            <p key={idx} className="text-gray-600">{snack.name}</p>
-                          ))}
+                          <div className="space-y-1">
+                            {meals.snacks.map((snack: any, idx: number) => (
+                              <button
+                                key={idx}
+                                onClick={() => handleRecipeClick(snack)}
+                                className="block text-gray-600 hover:text-blue-600 hover:underline cursor-pointer text-left"
+                              >
+                                {snack.name}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -387,6 +471,16 @@ export function MealPlanGenerator() {
           )}
         </div>
       )}
+
+      {/* Recipe Modal */}
+      <RecipeModal 
+        recipe={selectedRecipe}
+        isOpen={isRecipeModalOpen}
+        onClose={() => {
+          setIsRecipeModalOpen(false);
+          setSelectedRecipe(null);
+        }}
+      />
     </div>
   );
 }

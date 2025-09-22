@@ -130,3 +130,54 @@ export interface User {
     fiber: number;
   }
   
+// Add this interface to your existing types
+export interface Recipe {
+    name: string;
+    description?: string;
+    prepTime: number;
+    cookTime: number;
+    servings: number;
+    difficulty: string;
+    ingredients: {
+      name: string;
+      amount: string;
+      unit: string;
+    }[];
+    instructions: string[];
+    nutrition: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber: number;
+    };
+    tips?: string[];
+    tags?: string[];
+  }
+  
+  // Update the Meal interface to include full recipe
+  export interface Meal {
+    id: string;
+    name: string;
+    description: string;
+    prepTime: number;
+    cookTime: number;
+    servings: number;
+    difficulty: string;
+    ingredients: {
+      name: string;
+      amount: string;
+      unit: string;
+    }[];
+    instructions: string[];
+    nutrition: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber: number;
+    };
+    tips?: string[];
+    tags: string[];
+  }
+  
