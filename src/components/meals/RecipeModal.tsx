@@ -149,7 +149,7 @@ export function RecipeModal({ recipe, isOpen, onClose }: RecipeModalProps) {
             {/* Tips */}
             {recipe.tips && recipe.tips.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3">Chef's Tips</h3>
+                <h3 className="text-lg font-semibold mb-3">Chef&apos;s Tips</h3>
                 <ul className="space-y-2">
                   {recipe.tips.map((tip, idx) => (
                     <li key={idx} className="flex items-start">

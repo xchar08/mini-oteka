@@ -21,7 +21,7 @@ export function LoginForm() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Family Health Tracker</CardTitle>
           <CardDescription>
-            Track your family's nutrition and get personalized meal recommendations
+            Track your family&apos;s nutrition and get personalized meal recommendations
           </CardDescription>
         </CardHeader>
         <CardContent>
