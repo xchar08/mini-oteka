@@ -16,9 +16,9 @@ export interface User {
     activityLevel: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extremely_active';
     goal: 'cutting' | 'maintenance' | 'bulking';
     dietaryRestrictions: string;
-    bmr?: number;
-    tdee?: number;
-    targetCalories?: number;
+    bmr: number; // Made required
+    tdee: number; // Made required
+    targetCalories: number; // Made required
     createdAt: Date;
     updatedAt: Date;
   }
@@ -42,15 +42,16 @@ export interface User {
     updatedAt: Date;
   }
   
-  export interface Meal {
-    id: string;
+  export interface Recipe {
     name: string;
-    description: string;
-    prepTime: number; // minutes
+    description?: string;
+    prepTime: number;
+    cookTime: number;
     servings: number;
+    difficulty: string;
     ingredients: {
       name: string;
-      quantity: number;
+      amount: string;
       unit: string;
     }[];
     instructions: string[];
@@ -61,6 +62,32 @@ export interface User {
       fat: number;
       fiber: number;
     };
+    tips?: string[];
+    tags?: string[];
+  }
+  
+  export interface Meal {
+    id: string;
+    name: string;
+    description: string;
+    prepTime: number;
+    cookTime: number;
+    servings: number;
+    difficulty: string;
+    ingredients: {
+      name: string;
+      amount: string;
+      unit: string;
+    }[];
+    instructions: string[];
+    nutrition: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber: number;
+    };
+    tips?: string[];
     tags: string[];
   }
   
@@ -128,56 +155,5 @@ export interface User {
     carbs: number;
     fat: number;
     fiber: number;
-  }
-  
-// Add this interface to your existing types
-export interface Recipe {
-    name: string;
-    description?: string;
-    prepTime: number;
-    cookTime: number;
-    servings: number;
-    difficulty: string;
-    ingredients: {
-      name: string;
-      amount: string;
-      unit: string;
-    }[];
-    instructions: string[];
-    nutrition: {
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      fiber: number;
-    };
-    tips?: string[];
-    tags?: string[];
-  }
-  
-  // Update the Meal interface to include full recipe
-  export interface Meal {
-    id: string;
-    name: string;
-    description: string;
-    prepTime: number;
-    cookTime: number;
-    servings: number;
-    difficulty: string;
-    ingredients: {
-      name: string;
-      amount: string;
-      unit: string;
-    }[];
-    instructions: string[];
-    nutrition: {
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      fiber: number;
-    };
-    tips?: string[];
-    tags: string[];
   }
   

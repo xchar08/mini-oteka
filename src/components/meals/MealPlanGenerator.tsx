@@ -5,26 +5,12 @@ import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FamilyMember, PantryItem } from '@/types';
+import { FamilyMember, PantryItem, Recipe } from '@/types';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/components/auth/AuthProvider';
 import { generateMealRecommendations } from '@/lib/nebius';
 import { RecipeModal } from './RecipeModal';
 import { ChefHat, Calendar, ShoppingCart, Bug } from 'lucide-react';
-
-interface Recipe {
-  name: string;
-  description: string;
-  prepTime: number;
-  cookTime: number;
-  servings: number;
-  difficulty: string;
-  ingredients: { name: string; amount: string; unit: string }[];
-  instructions: string[];
-  nutrition: { calories: number; protein: number; carbs: number; fat: number; fiber: number };
-  tips: string[];
-  tags: string[];
-}
 
 interface MealPlanResponse {
   weeklyPlan: Record<string, {
@@ -145,6 +131,25 @@ export function MealPlanGenerator() {
       return;
     }
 
+    // Filter out incomplete family members and provide defaults
+    const validFamilyMembers = familyMembers
+      .filter(member => 
+        member.name && 
+        member.goal && 
+        typeof member.targetCalories === 'number' && 
+        member.targetCalories > 0
+      )
+      .map(member => ({
+        name: member.name,
+        goal: member.goal,
+        targetCalories: member.targetCalories
+      }));
+
+    if (validFamilyMembers.length === 0) {
+      alert('Please ensure all family members have complete information (name, goal, and target calories)');
+      return;
+    }
+
     setLoading(true);
     try {
       const nutritionPlan = `
@@ -182,8 +187,11 @@ export function MealPlanGenerator() {
       `;
 
       const recommendationsResponse = await generateMealRecommendations({
-        familyMembers,
-        pantryItems,
+        familyMembers: validFamilyMembers, // Use the filtered and mapped array
+        pantryItems: pantryItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity || 0
+        })),
         preferences: {
           cuisineType: cuisineType || 'Mediterranean',
           dietaryRestrictions: dietaryRestrictions || 'None',
@@ -305,7 +313,7 @@ export function MealPlanGenerator() {
                   <div key={member.id} className="text-sm">
                     <span className="font-medium">{member.name}</span>
                     <div className="text-gray-600 text-xs">
-                      {member.goal} • {member.targetCalories} cal
+                      {member.goal} • {member.targetCalories || 'Not set'} cal
                     </div>
                   </div>
                 ))}
