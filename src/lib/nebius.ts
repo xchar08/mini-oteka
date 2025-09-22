@@ -1,6 +1,13 @@
 interface MealRecommendationRequest {
-    familyMembers: any[];
-    pantryItems: any[];
+    familyMembers: {
+      name: string;
+      goal: string;
+      targetCalories: number;
+    }[];
+    pantryItems: {
+      name: string;
+      quantity: number;
+    }[];
     preferences: {
       cuisineType: string;
       dietaryRestrictions: string;

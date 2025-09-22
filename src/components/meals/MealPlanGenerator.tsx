@@ -5,12 +5,44 @@ import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FamilyMember, PantryItem, MealPlan } from '@/types';
+import { FamilyMember, PantryItem } from '@/types';
 import { db } from '@/lib/firebase';
 import { useAuthContext } from '@/components/auth/AuthProvider';
 import { generateMealRecommendations } from '@/lib/nebius';
 import { RecipeModal } from './RecipeModal';
 import { ChefHat, Calendar, ShoppingCart, Bug } from 'lucide-react';
+
+interface Recipe {
+  name: string;
+  description: string;
+  prepTime: number;
+  cookTime: number;
+  servings: number;
+  difficulty: string;
+  ingredients: { name: string; amount: string; unit: string }[];
+  instructions: string[];
+  nutrition: { calories: number; protein: number; carbs: number; fat: number; fiber: number };
+  tips: string[];
+  tags: string[];
+}
+
+interface MealPlanResponse {
+  weeklyPlan: Record<string, {
+    breakfast?: Recipe;
+    lunch?: Recipe;
+    dinner?: Recipe;
+    snacks?: Recipe[];
+  }>;
+  shoppingList: Record<string, { name: string; quantity: string }[]>;
+  macroSummary: Record<string, { dailyTotals: { calories: number; protein: number; carbs: number; fat: number } }>;
+}
+
+interface ModelData {
+  id: string;
+  object: string;
+  created: number;
+  owned_by: string;
+}
 
 export function MealPlanGenerator() {
   const { user } = useAuthContext();
@@ -19,16 +51,15 @@ export function MealPlanGenerator() {
   const [cuisineType, setCuisineType] = useState('');
   const [dietaryRestrictions, setDietaryRestrictions] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mealPlan, setMealPlan] = useState<any>(null);
-  const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [mealPlan, setMealPlan] = useState<MealPlanResponse | null>(null);
+  const [availableModels, setAvailableModels] = useState<ModelData[]>([]);
   const [debugMode, setDebugMode] = useState(false);
-  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
 
-    // Load family members
     const loadFamilyMembers = async () => {
       const q = query(
         collection(db, 'familyMembers'),
@@ -46,7 +77,6 @@ export function MealPlanGenerator() {
       setFamilyMembers(members);
     };
 
-    // Load pantry items
     const loadPantryItems = async () => {
       const q = query(
         collection(db, 'pantryItems'),
@@ -76,7 +106,7 @@ export function MealPlanGenerator() {
       const models = await response.json();
       
       if (models.data) {
-        console.log('Available models:', models.data.map((m: any) => m.id));
+        console.log('Available models:', models.data.map((m: ModelData) => m.id));
         setAvailableModels(models.data);
         alert(`Found ${models.data.length} models. Check console for details.`);
       } else {
@@ -102,7 +132,7 @@ export function MealPlanGenerator() {
     }
   };
 
-  const handleRecipeClick = (recipe: any) => {
+  const handleRecipeClick = (recipe: Recipe) => {
     if (recipe && recipe.name) {
       setSelectedRecipe(recipe);
       setIsRecipeModalOpen(true);
@@ -163,38 +193,33 @@ export function MealPlanGenerator() {
 
       console.log('Raw response:', recommendationsResponse);
 
-      let recommendations;
+      let recommendations: MealPlanResponse;
       try {
-        // Try to parse the JSON
         recommendations = JSON.parse(recommendationsResponse);
       } catch (parseError) {
         console.error('JSON Parse Error:', parseError);
         console.log('Response that failed to parse:', recommendationsResponse);
         
-        // Try to fix common JSON issues
         let fixedResponse = recommendationsResponse;
         
-        // Remove any text before the first {
         const firstBrace = fixedResponse.indexOf('{');
         if (firstBrace > 0) {
           fixedResponse = fixedResponse.substring(firstBrace);
         }
         
-        // Remove any text after the last }
         const lastBrace = fixedResponse.lastIndexOf('}');
         if (lastBrace > 0) {
           fixedResponse = fixedResponse.substring(0, lastBrace + 1);
         }
         
-        // Try to fix common issues
         fixedResponse = fixedResponse
-          .replace(/'/g, '"') // Replace single quotes with double quotes
-          .replace(/,\s*}/g, '}') // Remove trailing commas before }
-          .replace(/,\s*]/g, ']') // Remove trailing commas before ]
-          .replace(/\n/g, ' ') // Replace newlines with spaces
-          .replace(/\r/g, ' ') // Replace carriage returns with spaces
-          .replace(/\t/g, ' ') // Replace tabs with spaces
-          .replace(/  +/g, ' '); // Replace multiple spaces with single space
+          .replace(/'/g, '"')
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*]/g, ']')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, ' ')
+          .replace(/\t/g, ' ')
+          .replace(/  +/g, ' ');
         
         try {
           recommendations = JSON.parse(fixedResponse);
@@ -207,7 +232,6 @@ export function MealPlanGenerator() {
 
       setMealPlan(recommendations);
 
-      // Save meal plan to Firebase
       await addDoc(collection(db, 'mealPlans'), {
         userId: user.uid,
         weekOf: new Date(),
@@ -314,7 +338,7 @@ export function MealPlanGenerator() {
                 <div className="text-xs text-gray-600">
                   <p className="font-medium">Available Models ({availableModels.length}):</p>
                   <ul className="mt-1 space-y-1">
-                    {availableModels.slice(0, 5).map((model: any, idx) => (
+                    {availableModels.slice(0, 5).map((model, idx) => (
                       <li key={idx} className="font-mono">{model.id}</li>
                     ))}
                     {availableModels.length > 5 && (
@@ -339,7 +363,6 @@ export function MealPlanGenerator() {
 
       {mealPlan && (
         <div className="space-y-6">
-          {/* Weekly Plan */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -350,14 +373,14 @@ export function MealPlanGenerator() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-                {Object.entries(mealPlan.weeklyPlan || {}).map(([day, meals]: [string, any]) => (
+                {Object.entries(mealPlan.weeklyPlan || {}).map(([day, meals]) => (
                   <div key={day} className="space-y-2">
                     <h3 className="font-medium capitalize">{day}</h3>
                     <div className="space-y-1 text-sm">
                       <div>
                         <span className="font-medium">Breakfast:</span>
                         <button
-                          onClick={() => handleRecipeClick(meals.breakfast)}
+                          onClick={() => meals.breakfast && handleRecipeClick(meals.breakfast)}
                           className="block text-gray-600 hover:text-blue-600 hover:underline cursor-pointer text-left disabled:cursor-default disabled:hover:text-gray-600 disabled:hover:no-underline"
                           disabled={!meals.breakfast?.name}
                         >
@@ -367,7 +390,7 @@ export function MealPlanGenerator() {
                       <div>
                         <span className="font-medium">Lunch:</span>
                         <button
-                          onClick={() => handleRecipeClick(meals.lunch)}
+                          onClick={() => meals.lunch && handleRecipeClick(meals.lunch)}
                           className="block text-gray-600 hover:text-blue-600 hover:underline cursor-pointer text-left disabled:cursor-default disabled:hover:text-gray-600 disabled:hover:no-underline"
                           disabled={!meals.lunch?.name}
                         >
@@ -377,7 +400,7 @@ export function MealPlanGenerator() {
                       <div>
                         <span className="font-medium">Dinner:</span>
                         <button
-                          onClick={() => handleRecipeClick(meals.dinner)}
+                          onClick={() => meals.dinner && handleRecipeClick(meals.dinner)}
                           className="block text-gray-600 hover:text-blue-600 hover:underline cursor-pointer text-left disabled:cursor-default disabled:hover:text-gray-600 disabled:hover:no-underline"
                           disabled={!meals.dinner?.name}
                         >
@@ -388,7 +411,7 @@ export function MealPlanGenerator() {
                         <div>
                           <span className="font-medium">Snacks:</span>
                           <div className="space-y-1">
-                            {meals.snacks.map((snack: any, idx: number) => (
+                            {meals.snacks.map((snack, idx) => (
                               <button
                                 key={idx}
                                 onClick={() => handleRecipeClick(snack)}
@@ -407,7 +430,6 @@ export function MealPlanGenerator() {
             </CardContent>
           </Card>
 
-          {/* Shopping List */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -417,11 +439,11 @@ export function MealPlanGenerator() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.entries(mealPlan.shoppingList || {}).map(([category, items]: [string, any]) => (
+                {Object.entries(mealPlan.shoppingList || {}).map(([category, items]) => (
                   <div key={category}>
                     <h3 className="font-medium capitalize mb-2">{category}</h3>
                     <ul className="space-y-1">
-                      {(items || []).map((item: any, idx: number) => (
+                      {(items || []).map((item, idx) => (
                         <li key={idx} className="text-sm flex justify-between">
                           <span>{item.name || item}</span>
                           {item.quantity && <span className="text-gray-500">{item.quantity}</span>}
@@ -434,7 +456,6 @@ export function MealPlanGenerator() {
             </CardContent>
           </Card>
 
-          {/* Macro Summary */}
           {mealPlan.macroSummary && (
             <Card>
               <CardHeader>
@@ -442,7 +463,7 @@ export function MealPlanGenerator() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(mealPlan.macroSummary).map(([memberName, macros]: [string, any]) => (
+                  {Object.entries(mealPlan.macroSummary).map(([memberName, macros]) => (
                     <div key={memberName} className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-medium mb-2">{memberName}</h3>
                       <div className="space-y-1 text-sm">
@@ -472,7 +493,6 @@ export function MealPlanGenerator() {
         </div>
       )}
 
-      {/* Recipe Modal */}
       <RecipeModal 
         recipe={selectedRecipe}
         isOpen={isRecipeModalOpen}

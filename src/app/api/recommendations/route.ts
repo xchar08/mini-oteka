@@ -9,13 +9,45 @@ interface NebiusResponse {
 }
 
 interface MealRecommendationRequest {
-  familyMembers: any[];
-  pantryItems: any[];
+  familyMembers: {
+    name: string;
+    goal: string;
+    targetCalories: number;
+  }[];
+  pantryItems: {
+    name: string;
+    quantity: number;
+  }[];
   preferences: {
     cuisineType: string;
     dietaryRestrictions: string;
   };
   nutritionPlan: string;
+}
+
+interface MealPlan {
+  weeklyPlan: Record<string, {
+    breakfast?: Recipe;
+    lunch?: Recipe;
+    dinner?: Recipe;
+    snacks?: Recipe[];
+  }>;
+  shoppingList: Record<string, { name: string; quantity: string }[]>;
+  macroSummary: Record<string, { dailyTotals: { calories: number; protein: number; carbs: number; fat: number } }>;
+}
+
+interface Recipe {
+  name: string;
+  description: string;
+  prepTime: number;
+  cookTime: number;
+  servings: number;
+  difficulty: string;
+  ingredients: { name: string; amount: string; unit: string }[];
+  instructions: string[];
+  nutrition: { calories: number; protein: number; carbs: number; fat: number; fiber: number };
+  tips: string[];
+  tags: string[];
 }
 
 // Function to repair truncated JSON
@@ -213,7 +245,7 @@ CRITICAL: Respond with ONLY valid JSON. Keep recipes concise but complete.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mistralai/Devstral-Small-2505', // Using faster model
+        model: 'mistralai/Devstral-Small-2505',
         messages: [
           {
             role: 'system',
@@ -224,8 +256,8 @@ CRITICAL: Respond with ONLY valid JSON. Keep recipes concise but complete.
             content: prompt
           }
         ],
-        max_tokens: 8000, // Increased token limit
-        temperature: 0.2, // Lower temperature for consistency
+        max_tokens: 8000,
+        temperature: 0.2,
         response_format: { type: 'json_object' }
       }),
     });
@@ -263,10 +295,8 @@ CRITICAL: Respond with ONLY valid JSON. Keep recipes concise but complete.
     
     // Enhanced JSON cleanup and repair
     try {
-      // Remove markdown code blocks
       recommendations = recommendations.replace(/``````\n?/g, '');
       
-      // Find JSON boundaries
       const firstBrace = recommendations.indexOf('{');
       const lastBrace = recommendations.lastIndexOf('}');
       
@@ -274,11 +304,9 @@ CRITICAL: Respond with ONLY valid JSON. Keep recipes concise but complete.
         recommendations = recommendations.substring(firstBrace, lastBrace + 1);
       }
       
-      // Try to repair if truncated
       recommendations = repairTruncatedJSON(recommendations);
       
-      // Test if it's valid JSON
-      const testParse = JSON.parse(recommendations);
+      const testParse: MealPlan = JSON.parse(recommendations);
       console.log('Successfully validated JSON response');
       
       // Extend to 7 days if we only got 3 days
@@ -288,7 +316,6 @@ CRITICAL: Respond with ONLY valid JSON. Keep recipes concise but complete.
         
         days.forEach((day, index) => {
           if (!testParse.weeklyPlan[day]) {
-            // Copy from existing days
             const copyFrom = existingDays[index % existingDays.length];
             testParse.weeklyPlan[day] = testParse.weeklyPlan[copyFrom];
           }
