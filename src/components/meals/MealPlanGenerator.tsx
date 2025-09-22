@@ -438,31 +438,39 @@ export function MealPlanGenerator() {
             </CardContent>
           </Card>
 
-          <Card>
+            {/* Shopping List */}
+            <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center">
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Shopping List
-              </CardTitle>
+                </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Object.entries(mealPlan.shoppingList || {}).map(([category, items]) => (
-                  <div key={category}>
+                    <div key={category}>
                     <h3 className="font-medium capitalize mb-2">{category}</h3>
                     <ul className="space-y-1">
-                      {(items || []).map((item, idx) => (
-                        <li key={idx} className="text-sm flex justify-between">
-                          <span>{item.name || item}</span>
-                          {item.quantity && <span className="text-gray-500">{item.quantity}</span>}
-                        </li>
-                      ))}
+                        {(items || []).map((item, idx) => {
+                        // Handle both string and object formats
+                        const itemName = typeof item === 'string' ? item : item.name;
+                        const itemQuantity = typeof item === 'object' ? item.quantity : null;
+                        
+                        return (
+                            <li key={idx} className="text-sm flex justify-between">
+                            <span>{itemName}</span>
+                            {itemQuantity && <span className="text-gray-500">{itemQuantity}</span>}
+                            </li>
+                        );
+                        })}
                     </ul>
-                  </div>
+                    </div>
                 ))}
-              </div>
+                </div>
             </CardContent>
-          </Card>
+            </Card>
+
 
           {mealPlan.macroSummary && (
             <Card>

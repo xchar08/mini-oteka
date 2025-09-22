@@ -7,7 +7,10 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "type-check": "tsc --noEmit",
+    "check-all": "npm run type-check && npm run lint",
+    "pre-deploy": "npm run check-all && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
